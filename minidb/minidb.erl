@@ -23,10 +23,11 @@ get_all(Pid) ->
     Pid ! {get_all, self()},
     receive Store -> Store end.
 
-put(KeyVal, Pid) ->
+put(Pid, KeyVal) ->
     Pid ! {put, KeyVal},
     ok.
 
+%% server loop will be abstracted out by OTP
 server(Store) ->
     receive
         {get, Name, Pid} ->
@@ -42,7 +43,12 @@ server(Store) ->
     end.
 
 
-%%%% utility functions (pure)
+%%% utility functions (pure)
+
+% NOTE: these are replaceable by lists API
+%       or by using Data.Map instead of [(Key, Value)].
+% XXX:  Was written with no internet access, so
+%       just hand-rolled.
 
 %% lookup :: Key -> Store -> Maybe Value
 %% O(n).
