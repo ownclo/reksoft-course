@@ -1,4 +1,4 @@
--module(minibd).
+-module(minidb).
 
 -export([ start/0
         , stop/1
