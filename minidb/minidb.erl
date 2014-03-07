@@ -36,8 +36,8 @@ server(Store) ->
         {get_all, Pid} ->
             Pid ! Store,
             server(Store);
-        {put, KeyVal} ->
-            NewStore = insert(KeyVal, Store),
+        {put, {Key, Val}} ->
+            NewStore = insert({Key, Val}, Store),
             server(NewStore);
         stop -> ok
     end.
