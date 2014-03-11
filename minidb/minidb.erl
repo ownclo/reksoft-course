@@ -1,65 +1,61 @@
 -module(minidb).
+-behaviour(gen_server).
 
--export([ start/0
-        , stop/1
-        , get/2
-        , get_all/1  % for testing purposes
-        , put/2
+%% GEN_SERVER Exports
+-export([ init/1
+        , handle_call/3  % RPC-style
+        , handle_cast/2  % Async
+        , terminate/2    % Aborting?
+        , handle_info/2  % If server is called directly
+        , code_change/3  % MAGIC
         ]).
 
-start() ->
-    Init = [],
-    spawn(fun() -> server(Init) end).
+%% Public API
+-export([ get/2
+        , put/3
+        , delete/2
+        , sum/1
+        , start/0
+        , stop/1
+        ]).
 
-stop(Pid) ->
-    Pid ! stop,
-    ok.
+%% API
+start()                  -> gen_server:start(?MODULE, go, []).
+stop(Server)             -> gen_server:cast(Server, stop).
+get(Server, Name)        -> gen_server:call(Server, {get, Name}).
+sum(Server)              -> gen_server:call(Server, {sum}).
+put(Server, Name, Value) -> gen_server:cast(Server, {put, Name, Value}).
+delete(Server, Name)     -> gen_server:cast(Server, {delete, Name}).
 
-get(Pid, Name) ->
-    Pid ! {get, Name, self()},
-    receive Val -> Val end.
+% TODO: - implement 'delete'. cast
+%       - implement 'sum'. Returns a sum of values in the list.
+%         is_number(Var) -> true, false. Ignore non-numbers.
+%       - (optional). What other requests can be useful.
 
-get_all(Pid) ->
-    Pid ! {get_all, self()},
-    receive Store -> Store end.
+%% GEN_SERVER Callbacks
+% 'go' is for configuration (not used)
+init(go) -> {ok, []}.
 
-put(Pid, KeyVal) ->
-    Pid ! {put, KeyVal},
-    ok.
+% XXX: Do not use _From directly,
+% but the possibility is here.
+% {reply, result, new_state}
+handle_call({get, Name}, _From, DB) ->
+    {reply, kvlist:lookup(DB, Name), DB};
 
-%% server loop will be abstracted out by OTP
-server(Store) ->
-    receive
-        {get, Name, Pid} ->
-            Pid ! lookup(Name, Store),
-            server(Store);
-        {get_all, Pid} ->
-            Pid ! Store,
-            server(Store);
-        {put, KeyVal} ->
-            NewStore = insert(KeyVal, Store),
-            server(NewStore);
-        stop -> ok
-    end.
+handle_call({sum}, _From, DB) ->
+    {reply, kvlist:sum(DB), DB}.
 
+handle_cast({put, Name, Value}, DB) ->
+    {noreply, kvlist:insert(DB, Name, Value)};
 
-%%% utility functions (pure)
+handle_cast({delete, Name}, DB) ->
+    {noreply, kvlist:delete(DB, Name)};
 
-% NOTE: these are replaceable by lists API
-%       or by using Data.Map instead of [(Key, Value)].
-% XXX:  Was written with no internet access, so
-%       just hand-rolled.
+handle_cast(stop, DB) -> {stop, normal, DB}.
 
-%% lookup :: Key -> Store -> Maybe Value
-%% O(n).
-lookup(_Key, []) -> not_found;
-lookup(Key, [{Key, Value} | _Rest]) -> Value;
-lookup(Key, [ _ | Rest ]) -> lookup(Key, Rest).
+% terminate will be called after handle_cast(stop).
+% it is needed for cleaning resources.
+terminate(_Reason, _DB) -> ok.
 
-%% insert :: Key -> Value -> Store -> Store
-%% O(n) if filtering out, O(1) if not.
-insert({NewKey, NewVal}, KVList) ->
-    Filtered = [KV || ({Key, _} = KV) <- KVList, 
-                      Key =/= NewKey
-               ],
-    [ {NewKey, NewVal} | Filtered ].
+handle_info(_Message, DB) -> {noreply, DB}.
+code_change(_Prev, State, _Extra) -> {ok, State}.
