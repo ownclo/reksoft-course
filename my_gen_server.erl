@@ -1,4 +1,4 @@
--module(gen_server).
+-module(my_gen_server).
 -compile([export_all]).
 
 stop(Server) -> Server ! stop.

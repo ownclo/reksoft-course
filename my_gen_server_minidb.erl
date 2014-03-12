@@ -1,4 +1,4 @@
--module(minidb).
+-module(my_gen_server_minidb).
 
 -export([ handle_sync/2
         , handle_async/2
@@ -16,27 +16,27 @@
 -behaviour(my_gen_server).
 
 handle_sync(State, {get, Name}) ->
-    {get(State, Name), State}.
+    {lookup(Name, State), State};
+
+handle_sync(State, get_all) ->
+    {State, State}.
 
 handle_async(State, {put, Name, Value}) ->
-    put(State, {Name, Value}).
+    insert({Name, Value}, State).
 
 start() -> server:start(?MODULE).
+stop(Server) -> Server ! stop.
 
 init() -> [].
 
 put(Server, {Name, Value}) ->
-    handle_async( %%%%%%%% TODO TODO.
+    call_async(Server, {put, Name, Value}).
 
-get(Pid, Name) ->
-    Pid ! {get, Name, self()},
-    receive Val -> Val end.
+get(Server, Name) ->
+    call_sync(Server, {get, Name}).
 
-get_all(Pid) ->
-    Pid ! {get_all, self()},
-    receive Store -> Store end.
-
-put(Pid, KeyVal) ->
+get_all(Server) ->
+    call_sync(Server, get_all).
 
 %%% utility functions (pure)
 
