@@ -5,7 +5,7 @@
 %% O(n).
 lookup([], _Key) -> not_found;
 lookup([{Key, Value} | _Rest], Key) -> Value;
-lookup([ _ | Rest ], Key) -> lookup(Key, Rest).
+lookup([ _ | Rest ], Key) -> lookup(Rest, Key).
 
 %% O(n) if filtering out, O(1) if not.
 insert(KVList, NewKey, NewVal) ->
@@ -13,9 +13,11 @@ insert(KVList, NewKey, NewVal) ->
     [ {NewKey, NewVal} | Filtered ].
 
 delete(KVList, Key) ->
-    [KV || ({CurrKey, _} = KV) <- KVList, 
-           CurrKey =/= Key
-    ].
+    % delete key = filter ((/= key) . fst)
+    NotMatching = fun({Candidate, _}) ->
+            Candidate =/= Key
+    end,
+    lists:filter(NotMatching, KVList).
 
 sum(KVList) ->
     % sum . map snd

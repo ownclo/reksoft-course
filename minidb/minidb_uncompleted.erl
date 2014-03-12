@@ -1,5 +1,9 @@
 -module(minidb).
-%% TODO: Finish that.
+
+-export([ handle_sync/2
+        , handle_async/2
+        , init/0
+        ]).
 
 -export([ start/0
         , stop/1
@@ -8,8 +12,8 @@
         , put/2
         ]).
 
--behaviour(my_gen_server).
 %% erlc -pa . client.erl
+-behaviour(my_gen_server).
 
 handle_sync(State, {get, Name}) ->
     {get(State, Name), State}.
