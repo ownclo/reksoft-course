@@ -42,25 +42,8 @@ init(go) -> {ok, []}.
 handle_call({get, Name}, _From, DB) ->
     {reply, kvlist:lookup(DB, Name), DB};
 
-<<<<<<< HEAD
-%% server loop will be abstracted out by OTP
-server(Store) ->
-    receive
-        {get, Name, Pid} ->
-            Pid ! lookup(Name, Store),
-            server(Store);
-        {get_all, Pid} ->
-            Pid ! Store,
-            server(Store);
-        {put, {Key, Val}} ->
-            NewStore = insert({Key, Val}, Store),
-            server(NewStore);
-        stop -> ok
-    end.
-=======
 handle_call({sum}, _From, DB) ->
     {reply, kvlist:sum(DB), DB}.
->>>>>>> 5868c7c054e9eebd83eb9c8b3e1f0f73fc19922b
 
 handle_cast({put, Name, Value}, DB) ->
     {noreply, kvlist:insert(DB, Name, Value)};
