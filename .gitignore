@@ -1,1 +1,3 @@
 *.beam
+tags
+Session.vim
