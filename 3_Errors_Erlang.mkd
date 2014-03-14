@@ -1,0 +1,149 @@
+Errors in Erlang
+================
+
+OFF-TOPIC: Conditionals
+-----------------------
+
+    case kokoko of
+        true -> ...;
+        false -> ...
+    end
+
+    if
+        kokoko -> ...;
+        true -> ...
+    end
+
+    something() when kokoko -> ...;
+    something() -> ... .
+
+Ya know, runtime errors
+-----------------------
+Catch
+-----
+XXX: use catch with caution.
+
+    catch EXPR
+
+    > catch 1/0.
+    {'EXIT',{badarith,[{erlang,'/',[1,0],[]},
+            {erl_eval,do_apply,6,[{file,"erl_eval.erl"},{line,573}]},
+            {erl_eval,expr,5,[{file,"erl_eval.erl"},{line,357}]},
+            {shell,exprs,7,[{file,"shell.erl"},{line,674}]},
+            {shell,eval_exprs,7,[{file,"shell.erl"},{line,629}]},
+            {shell,eval_loop,3,[{file,"shell.erl"},{line,614}]}]}}
+
+    No such function clause -> function_clause
+    No such case clause     -> case_clause
+    catch foo = bar         -> badmatch
+    BIF (spawn(0))          -> badarg
+
+Erlang has 3 exception classes:
+
+    * error (all shown) is one of them;
+    * exit - "critical" errors;
+    * throw - exceptions that a programmer is aware of (yeah).
+
+one can throw and catch all of these. There are three functions with
+matching names.
+
+    foo(F) ->
+      try
+        F(),
+        io:fromat("Success ")
+      catch % type:Var is a special catch-specific syntax
+        throw:Throw -> kokoko;  % throw is the default.
+        error:Error -> kokoko;
+        exit:Exit   -> kokoko;
+
+        erlang:get_stacktrace()  % stacktrace of the last error (!)
+                                 % not the current stacktrace.
+
+    try
+      ...
+    of     % if no exceptions was thrown. DO NOT USE IT :)
+      Pattern -> Value;
+    catch  % if an exception was thrown.
+      ...
+    after  % like 'finally'
+      ...  % will vars from 'try' be visible? Nonono.
+    end
+
+    > try foo of foo -> bar catch _:_ -> err end.
+    bar
+    > catch try foo of bar -> catch catch _:_ -> err end.
+    {'EXIT', {try_clause ....
+
+
+Inter-Process links
+-------------------
+
+If a linked process dies, it sends a signal
+to the linked process. Then both processes die
+(by default). Unless you set a `trap_exit(true)`,
+in that case failure message gets stored in the mailbox.
+
+We can link after a process died, so there is a special
+function, `spawn_link`, that will do both steps atomically.
+
+
+Gen server and links
+--------------------
+
+    init(go) ->
+        process_flag(trap_exit, true),
+        spawn_link(fun() -> exit(0) end),
+        {ok, nostate}.
+
+    handle_info(Message, nostate) ->
+        io:format("Got message: ~p~n", [Message]),
+        {noreply, nostate}.
+
+
+Monitors
+--------
+
+    Pid = spawn(fun() -> timer:sleep(5000) end).
+    Ref = monitor(process, Pid).
+    flush().  % dump all mailbox messages to screen.
+
+    spawn_monitor(fun() -> exit(boo) end).
+
+NB: In case of multiple monitors, multiple references are
+created and multiple messages are dropped to the mailbox.
+
+    * unlink(Pid) - breaks the link
+    * demonitor(Ref) - stop monitoring on a reference.
+
+
+Links and Nodes
+---------------
+The message will not always be delivered.
+One cannot simply monitor a process on another node.
+If one links with remote Pid, no message will be received.
+Silently. But we can monitor a node!
+
+    net_kernel:connect_node(second@koko).
+    monitor_node(second@koko, true).  % # of trues gets counted.
+
+A PROCESS monitors a node, not a node.
+
+
+TASK
+----
+
+Write a `gen_server` with following interface:
+
+    * schedule(Server, F, N). Spawn a process with F. If F
+      fails, restart it, but not more than N times.
+      That schedule returns an Id (same between restarts).
+      The call is a syncronous one.
+      Id = server:schedule(S, fun() -> do_something() end, 10).
+    * `get_result(Server, Id)`. Return a status of the job Id.
+      Not yet finished, failed too many times, wrong id etc.
+    * cancel(Server, Id) - forget the task about Id. async.
+    * ADDITIONAL STUFF. E.g. status, subscription, etc.
+    * Testing. Find a function that fails, but not always.
+
+NOTE: Identificator shall be independent of the number of
+restarts.
