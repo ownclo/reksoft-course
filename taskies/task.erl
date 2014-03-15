@@ -9,6 +9,7 @@
 
 %% API
 -export([start/2
+        ,start/1
         ,stop/1
         ,get_status/1
         ,cancel/1
@@ -22,34 +23,54 @@
          terminate/2,
          code_change/3]).
 
+-type task_id() :: pid().
+-type task_closure() :: fun(() -> any()).
+-type attempts_allowed() :: pos_integer() | forever.
+-type task_status() :: {working, non_neg_integer()}
+                     | {succeeded, any()}
+                     | fail_limit_reached.
+
 %% XXX: How can I guarantee the immutability of
 %% 'task_closure' and 'attempts_allowed'? NOWAY :(
 %% ReaderT TaskConfig State TaskStatus
 -record(state, {
-        status            :: task_types:task_status(),
+        status            :: task_status(),
         worker            :: pid(),
 
         % IMMUTABLE
-        attempts_allowed  :: task_types:attempts_allowed(),
-        task_closure      :: task_types:task_closure()
+        attempts_allowed  :: attempts_allowed(),
+        task_closure      :: task_closure()
         }).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 
+%%--------------------------------------------------------------------
+%% @doc
+%% Schedules a task to perform. Takes a task closure (0 arity) and
+%% a number of attempts to restart a task in case of failure.
+%% Returns an Id of a task that is used for further interoperation.
+%% Single attempt is the default.
+%% @end
+%%--------------------------------------------------------------------
+-spec start(Task     :: task_closure(),
+            Attempts :: attempts_allowed())
+    -> {ok, task_id()} | {error, Reason :: any()}.
 start(Task, Attempts) ->
     gen_server:start(?MODULE, [Task, Attempts], []).
 
+start(Task) -> start(Task, 1).
+
 % will force the worker process to abort
-stop(Task) ->
-    gen_server:cast(Task, stop).
+stop(TaskId) ->
+    gen_server:cast(TaskId, stop).
 
-cancel(Task) -> stop(Task).
+cancel(TaskId) -> stop(TaskId).
 
--spec get_status(task_types:task_id()) -> task_types:task_status().
-get_status(Task) ->
-    gen_server:call(Task, get_status).
+-spec get_status(task_id()) -> task_status().
+get_status(TaskId) ->
+    gen_server:call(TaskId, get_status).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -92,7 +113,22 @@ init([Task, Attempts]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(get_status, _From, State) ->
-    % TODO: Stop ourselves if finishing is reported?
+    % NOTE: Stop ourselves if finishing is reported?
+    % That is considered a poorer design decision.
+    % While easily implementable, that behaviour will
+    % complicate interoperation with multiple listeners.
+    % Idling when done (while explicitly canceled) need to
+    % be documented at the top level, but that decision was
+    % taken consciously.
+
+    % Status = State#state.status,
+    % StopResponse = {stop, normal, Status, State},
+    % WorkResponse = {reply, Status, State},
+    % case Status of
+    %     {working, _} -> WorkResponse;
+    %     _ -> StopResponse
+    % end;
+
     {reply, State#state.status, State};
 
 handle_call(_Request, _From, State) ->
