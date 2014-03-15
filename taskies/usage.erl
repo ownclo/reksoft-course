@@ -6,15 +6,15 @@ main(_) ->
     _OkFunction = fun() -> io:format("Hi there!~n"), ok end,
     ExitFunction = fun() -> io:format("Dying...~n"), exit(dead) end,
 
-    {ok, Pid} = taskmaster:start(),
-
-    TaskId = taskmaster:schedule(Pid, ExitFunction, 10),
+    {ok, TaskId} = task:start(ExitFunction, 10),
     note("TaskId: ", TaskId),
 
-    Status = taskmaster:get_status(TaskId),
+    Status = task:get_status(TaskId),
     note("TaskStatus: ", Status),
 
-    taskmaster:stop(Pid),
+    timer:sleep(5),
+    note("TaskStatus: ", task:get_status(TaskId)),
+    task:cancel(TaskId),
     ok.
 
 note(Note, Val) ->
