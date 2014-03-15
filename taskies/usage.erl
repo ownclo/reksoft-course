@@ -3,10 +3,12 @@
 -mode(compile).
 
 main(_) ->
-    OkFunction = fun() -> io:format("Hi there!~n"), ok end,
+    _OkFunction = fun() -> io:format("Hi there!~n"), ok end,
+    ExitFunction = fun() -> io:format("Dying...~n"), exit(dead) end,
 
     {ok, Pid} = taskmaster:start(),
-    TaskId = taskmaster:schedule(Pid, OkFunction),
+
+    TaskId = taskmaster:schedule(Pid, ExitFunction, 10),
     note("TaskId: ", TaskId),
 
     Status = taskmaster:get_status(TaskId),

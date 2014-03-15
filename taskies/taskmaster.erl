@@ -8,7 +8,8 @@
          stop/1,
          schedule/3,
          schedule/2,
-         get_status/1]).
+         get_status/1,
+         cancel/1]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -19,7 +20,8 @@
          code_change/3]).
 
 %% NOTE: Task manager master is stateless, which is
-%% a major factor in favor of architecture choosen.
+%% a major argument in favor of architecture choosen.
+%% XXX: Is task manager even needed here?
 -record(state, {}).
 
 %%%===================================================================
@@ -69,6 +71,8 @@ schedule(Server, Task) -> schedule(Server, Task, 1).
 -spec get_status(task_types:task_id()) -> task_types:task_status().
 get_status(TaskId) ->
     task:get_status(TaskId).
+
+cancel(TaskId) -> task:cancel(TaskId).
 
 %%%===================================================================
 %%% gen_server callbacks
