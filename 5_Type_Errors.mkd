@@ -1,0 +1,52 @@
+Type errors in erlang
+=====================
+THERE IS NO TYPE SYSTEM IN ERLANG
+
+    dialyzer --src test.erl
+
+    -spec(name/arity :: (argument_types) -> result_type).
+    -spec(foo/2 :: (any(), integer()) -> float()).
+
+ranges are supported.
+
+synonyms:
+    term() == any()
+    no_return() == none()
+    char() == some weird range
+    string() == [char()]
+
+user-defined types.
+
+
+RECORDS
+=======
+
+Syntactic sugar for tuples.
+- Access elements of a record by name.
+
+    ERL: > rd(my_record, {field1 = 0, field2 = koko}).
+    (NO TYPE SPECIFICATION)
+
+    Pos = #my_record.field2,
+    > 3 -- order of an element of record.
+
+    - Client CAN define records afterwards.
+    - Vars CANNOT be used in place of record names (preprocessor!)
+
+
+HEADERS
+=======
+If a record need to be visible across multiple .erl files,
+write record definition in ".hrl" file and include it everywhere.
+
+    -include("records.hrl").
+
+    VERSIONS !
+
+Erlang17 will have maps (like in Clojure)
+
+Проверка арности: `is_function/2`
+
+    `is_record(Rec, my_record)`. This is
+    a compiler construction, one cannot use
+    a variable for that.
