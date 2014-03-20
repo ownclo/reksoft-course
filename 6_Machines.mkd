@@ -1,0 +1,35 @@
+Machines
+========
+
+Finite state machines.
+Unappropriate in case if transitions are
+linear. Too heavy-weight. If a server behaves
+differently depending on some state status
+(e.g. crashed, stopped), `gen_fsm` can be of a great
+use.
+
+GEN FSM
+-------
+
+* `handle_event`, `handle_sync_event`
+* use `next_state` if no reply needed.
+
+When we exit from `gen_fsm` we can change Data,
+but the state is left unchanged.
+
+`handle_event` is used in case when the processing is
+used independently of the current state.
+
+    stop(Id) -> gen_fsm:send_all_states_event(Id, stop).
+    start(F) -> gen_fsm:start(?MODULE, F, []).
+
+    get_result(Id) -> gen_fsm:sync_send_event(Id, get_result).
+
+    init(F) ->
+        process_flag(trap_exit, true),
+        Id = self(),
+        Pid =
+            spawn_link(fun() ->
+                gen_fsm:send_event(Id, {result, F()})
+            end).
+        {running, Pid}.
