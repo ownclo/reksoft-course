@@ -5,8 +5,10 @@
 %% API
 -export([start_link/0
         ,start/0
+        ,stop/1
         ,status/1
         ,reserve/2
+        ,reserve_wait/2
         ,leave/2]).
 
 %% gen_fsm callbacks
@@ -23,7 +25,43 @@
 
 %% ROOMY STATES:
 %%     - free. State = []
-%%     - reserved. State = N, N - number of slots reserved.
+%%     - reserved. State = {N, Waiting :: queue:queue({pid(), N})},
+%%       N - number of slots reserved; Waiting - queue of processees
+%%       waiting for room to be empty. In reserved state, if
+%%       'reserve_wait' message arrives, Pid of callee is added to
+%%       this queue. When it's time to switch to 'free' state,
+%%       in case of non-empty waiters' queue, topmost waiter is
+%%       popped from the queue, the process is notified, and the
+%%       room gets reserved by a process.
+
+% Key design choice was whether one should store waiters' messages
+% in the mailbox or support additional internal queue instead.
+% The latter option was choosen, because in that case the presense
+% of waiters' queue is explicit and the performance of
+% waiters-related operations is independent of mailbox size (if
+% one keeps messages in a mailbox, one need to scan it every time
+% a transition from 'free' to 'reserved' is about to be made. If
+% no one sends 'reserve_wait' message at all, the mailbox is fully
+% scanned on every such transition, which is probably a bad idea).
+
+% Note that 'reserve_wait' cannot be a gen_fsm sync RPC call since the
+% server need to process other messages while the waiting client is
+% blocked. So we send a message to that process upon completion.
+
+% Given a room is 'reserved', when further 'reserve' is attempted,
+% then 'error' is returned. Use 'reserve_wait' in order to wait for
+% the room to be freed.
+
+% A new queue is allocated upon each transition from 'free' to
+% 'reserved'. Chances are that this will never become a bottleneck,
+% but in that case one just could hold the same mutable state
+% reference
+
+-type(waiter_elem() :: {pid(), non_neg_integer()}).
+-record(reserved_state, {
+        num_reserved :: non_neg_integer(),
+        wait_queue = queue:new() :: queue:queue(waiter_elem())
+       }).
 
 %%%===================================================================
 %%% API
@@ -44,11 +82,22 @@ start_link() ->
 start() ->
     gen_fsm:start(?MODULE, [], []).
 
+stop(Id) ->
+    gen_fsm:send_all_state_event(Id, stop).
+
 status(Id) ->
     gen_fsm:sync_send_all_state_event(Id, status).
 
 reserve(Id, N) ->
     gen_fsm:sync_send_event(Id, {reserve, N}).
+
+reserve_wait(Id, N) ->
+    gen_fsm:send_event(Id, {reserve_wait, N, self()}),
+    receive
+        % XXX: Id is already bound, checking for message from
+        % particular room.
+        {reserved, Id} -> ok
+    end.
 
 leave(Id, M) ->
     gen_fsm:send_event(Id, {free, M}).
@@ -89,13 +138,36 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 free({free, _M}, State) ->
-    {next_state, free, State}.
+    {next_state, free, State};
 
-reserved({free, M}, N) ->
-    % TODO: Force M to be a positive number.
-    if M >= N -> {next_state, free, []};
-       true   -> {next_state, reserved, N - M}
-    end.
+free({reserve_wait, N, Pid}, _State) ->
+    notify_reserved(Pid),
+    {next_state, reserved, #reserved_state{num_reserved = N}}.
+
+
+reserved({free, M}, #reserved_state{num_reserved = N} = S)
+        when M >= N ->
+
+    Queue = S#reserved_state.wait_queue,
+
+    case queue:out(Queue) of
+        {empty, _Queue} -> {next_state, free, []};
+        {{value, {Pid, WaitN}}, RestQ} ->
+            notify_reserved(Pid),
+            NewState = S#reserved_state{
+                    num_reserved = WaitN,
+                    wait_queue = RestQ},
+            {next_state, reserved, NewState}
+    end;
+
+% M < N (see above).
+reserved({free, M}, #reserved_state{num_reserved = N} = S) ->
+    {next_state, reserved,
+     S#reserved_state{num_reserved = N - M}};
+
+reserved({reserve_wait, N, Pid}, State) ->
+    {next_state, reserved, push_waiter({Pid, N}, State)}.
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -116,9 +188,9 @@ reserved({free, M}, N) ->
 %% @end
 %%--------------------------------------------------------------------
 free({reserve, N}, _From, _State) ->
-    % TODO: Force N to be a positive number.
+    % TODO: Force N to be a positive number. Or just fail fast?
     Reply = ok,
-    {reply, Reply, reserved, N};
+    {reply, Reply, reserved, #reserved_state{num_reserved = N}};
 
 free(_Event, _From, State) ->
     Reply = ok,
@@ -141,6 +213,12 @@ reserved({reserve, _N}, _From, State) ->
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
+
+% Stopping even if state is 'reserved'.
+% No context, so that's probably ok.
+handle_event(stop, _StateName, State) ->
+    {stop, normal, State};
+
 handle_event(_Event, StateName, State) ->
     {next_state, StateName, State}.
 
@@ -213,3 +291,11 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+notify_reserved(Pid) ->
+    Pid ! {reserved, self()}.
+
+% I want to have a lens library here :(
+% Nested updates are such a pain in Erlnag.
+push_waiter(Waiter, #reserved_state{wait_queue=Q}=S) ->
+    S#reserved_state{wait_queue=queue:in(Waiter, Q)}.
