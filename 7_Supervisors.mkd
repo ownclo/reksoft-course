@@ -1,0 +1,145 @@
+Supervisors
+===========
+
+    behaviour_info(callbacks) -> [init/1].
+
+Restart policies:
+-----------------
+
+- `one_for_one` - restart that process on fail.
+- `one_for_all` - restart _all_ processes on failure.
+- `rest_for_one` - restart that process and all that
+  were started _after_ the start of failed one.
+- `simple_one_for_one` - will be discussed later
+
+    {one_for_one, 5, 60}
+
+shut down a supervisor if a process was restarted
+more than 5 times in 60 seconds.
+
+Restart strategies
+------------------
+    permanent/temporary/transient
+
+- `permanent` - restart a process on failure or exit
+- `temporary` - ignore the finishing of a process
+- `transient` - restart on failure, don't restart on normal
+
+    exit(Pid, Reason)  % send a signal to Pid
+    % {'EXIT', self(), Reason}.
+
+What do we do on shutdown
+-------------------------
+
+    exit(Pid, shutdown),
+    receive
+        {'EXIT', Pid, _} -> ok
+    after Timeout ->
+        exit(Pid, kill)  % impossible to trap.
+    end
+
+If `trap_exit` is set, a process can handle failure.
+If it does did not respond after timeout set,
+just kill it. If `brutal_kill` was set, just kill
+with no chance to handle error.
+
+Main function to start
+----------------------
+
+    {web_server_main, start, [{port, 80}]},
+    % module, function, arguments.
+
+The starting function must return:
+    {ok, ChildPid} | {ok, ChildPid, Info}
+
+`start` is executed in supervisor process. We need
+to link to the child process, or the supervisor will
+not be notified.
+
+Worker or Supervisor
+--------------------
+    worker/supervisor
+
+List of modules used
+--------------------
+Used for hot code reload.
+
+`dynamic` means that we do not know what modules will
+the process need. It must be notified in case of any
+code update. Subtle shit, will not dig into details.
+
+Simple one for one
+------------------
+`simple_one_for_one` is a strategy for worker pool,
+or for a number of identical processees. A lot of
+details, will not discuss here.
+
+Starting of a supervisor
+------------------------
+
+    start() ->
+        {ok, Pid} = supervisor:start_link(google_sup, go),
+        % ....
+
+There is no `start` for a supervisor. Why?
+
+Dynamically add a process to a supervisor
+-----------------------------------------
+
+    {ok, VipSearch} =
+        supervisor:start_child(SupPid,
+          {vip_search, {vip_search_mod, start, ["Page"]},
+          ...})
+
+Deletion of a process from supervisor
+-------------------------------------
+
+    % kill a child, but it will be restarted on
+    % supervision tree restart.
+    supervisor:terminate_child(SupPid, vip_search)
+    % forget about child. (it will be kept running)
+    supervisor:delete_child(SupPid, vip_search)
+
+NB: for kill and forget, use both. Nobody guarantees
+that process will not be restarted in-between.
+
+Simple one for one
+------------------
+Single specification in the array.
+
+Start:
+    start_child(VipGooglePid, [drunk, vodka])
+    % --> vip_search_mod:start("Page", drunk, vodka)
+    % instead of 'vip_search_mod:start("Page")'.
+
+Termination:
+    terminate_child(Pid, PagePid).
+
+`delete_child` and `restart_child` are meaningless,
+so they return errors.
+
+Registering on a node
+---------------------
+    register(foo, self()).  % on a single node.
+    {foo, node()} ! bar  % send a message.
+
+    % Global registration
+    global:register_name(foo, self()).
+    global:send(foo, bar)
+
+    % Additional parameters
+    % gen_server
+    gen_server:start_link(Name, foo_module, go, [])
+    % supervisor
+    gen_server:start_link(Name, google_main_module, go).
+
+    % Name = {local, foo} | {global, foo}
+
+supervisor start:
+    supervisor:start_link({local, ?MODULE}, ?MODULE, go).
+    init(go) -> ...
+
+
+Task
+----
+How to test a supervisor? Implement a sample server.
