@@ -3,7 +3,8 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0]).
+-export([start_link/0
+        ,shutdown/1]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -29,6 +30,9 @@
 start_link() ->
     gen_server:start_link(?MODULE, [], []).
 
+shutdown(Worker) ->
+    gen_server:cast(Worker, stop).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -45,7 +49,13 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    io:format("Dummy worker started!~n"),
+    % feels dirty, but works fine. There are
+    % some troubles in supplying a callee Pid to
+    % all workers. They migh be started either with
+    % the supervisor or dynamically, so need to pass
+    % the Pid everywhere.
+    {main, node()} ! {started, self()},
+    io:format("WORKER MSG: Dummy worker started!~n"),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -76,6 +86,10 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast(stop, State) ->
+    io:format("WORKER MSG: Dummy worker stopped!~n"),
+    {stop, normal, State};
+
 handle_cast(_Msg, State) ->
     {noreply, State}.
 

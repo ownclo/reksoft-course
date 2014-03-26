@@ -5,8 +5,9 @@
 %% API
 -export([start_link/0
         ,start_link/1
-        ,new_child_simple/1
-        ,new_child/2]).
+        ,new_child/3
+        ,shutdown/1
+        ,crash/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -31,11 +32,17 @@ start_link() ->
 start_link(Policy) ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, Policy).
 
-new_child_simple(Server) ->
-    supervisor:start_child(Server, []).  % array of additional parameters
+new_child(Server, simple_one_for_one, _Name) ->
+    supervisor:start_child(Server, []);  % array of additional parameters
 
-new_child(Server, Name) ->
+new_child(Server, _Policy, Name) ->
     supervisor:start_child(Server, dummy_spec(Name)).
+
+shutdown(Worker) ->
+    dummy_worker:shutdown(Worker).
+
+crash(Worker) ->
+    exit(Worker, kill).
 
 %%%===================================================================
 %%% Supervisor callbacks
@@ -62,7 +69,9 @@ init([]) ->
 
 init(Policy) ->
     {ok, {{Policy, 5, 10},
-          [dummy_spec(dummy_worker)]
+          [dummy_spec(dummy_worker)
+          ,dummy_spec(blah)
+          ,dummy_spec(bob)]
          }
     }.
 
