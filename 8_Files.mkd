@@ -1,0 +1,115 @@
+Working with files
+==================
+
+    {ok, FR} = file:open("hello.txt", [read]),
+    {ok, FW} = file:open("copy.txt", [write]),
+
+    % XXX: 10 BYTES, not chars (unicode)
+    R1 = file:read(FR, 10).  % -> {ok, "Hello, worl"} | eof
+    {ok, W1} = R1, file:write(FW, W1).
+
+String in Erlang is [Char]. Not the best data structure.
+There is a better data type: binary.
+
+Binary
+------
+
+    A = <<1,2,3>>.
+
+One cannot simply insert a binary into a binary. A var
+is treated as a number by default.
+
+    <<5,6,A/binary,7>>
+    --> <<5,6,1,2,3,7>>
+
+    <<1,2,257:16>>
+    --> <<1,2,1,1>>
+
+    <<7:4, 0>>
+    --> <<112,0:4>>
+
+If length of a bitstring is divisable by 8, the type is
+`binary`, `bitstring` if not.
+
+The cool thing about bitstrings is that bitstrings can
+be pattern-matched.
+
+    > 2#11000001.
+    193
+
+Binaries are big-endian (biggest first). Can be specified
+by `big`, `little` or `native`.
+
+`signed` and `unsigned` . If multiple specifications are
+needed, separate them by dash:
+
+    <<A1:16/big-unsigned>> = A.
+
+String can be used in both pattern-matching and declaration.
+(string literals only).
+
+    > B = list_to_binary("123").
+    <<1,2,3>>
+
+    > binary_to_list(B)
+    "123"
+
+There are bit string comprehensions.
+
+    [f(X) || <<X>> <= <<1,2,3>>]
+    <<f(X) || <<X:16/little-signed>> <= <<1,2,3>> >>
+
+Buffers:
+
+    > A = <<1,2,3,4>>.
+    <<1,2,3,4>>
+    > {ok, F} = file:open(A, [read, write, binary, ram]).
+    {ok, {file_descriptor, ram_file, #Port<0.853>}}
+    > file:read(F, 2).
+    {ok, <<1,2>>}
+    > file:position(F, bof).
+    {ok, 0}
+    > file:write(F, <<10, 11>>).
+    ok
+    > file:position(F, {cur, -2}), file:read(F, 4).
+    {ok, <<10,11,3,4>>}
+    > file:write(F, <<"abcde">>).
+    ok
+    > file:position(F, bof), file:read(F, 10).
+    {ok, <<10,11,3,4,5,97,98,99,100,101>>}
+    > A.  % 'A' is immutable. Copy-on-write?
+    <<1,2,3,4>>
+
+Formatted input-output
+
+    > io:fwrite("~s - ~p~n", ["abc", {5,6}])
+    abc - {5,6}
+    ok
+    > io:fread("? ", "1~d~s").
+    ? 189abc
+    {ok, [89, "abc"]}
+
+    % can be used with file handles.
+    % do not use formatted output with
+    % a file opened in RW mode.
+    
+Unicode
+
+Use `~ts` for printing unicode. Does not work
+with nested stuctures.
+
+`term_to_binary` and `binary_to_term`. Works
+with closures. Does not preserves module
+information.
+
+Task
+----
+
+Implement `from_term` and `to_term` that
+works likewise. Integers, lists and tuples.
+
+Arbitrarily nested.
+
+`is_list` `is_tuple` `is_integer`.
+`size` and `element` with tuples. Size is 1-started.
+`tuple_to_list`. Prop isomorphic. 32-bit integers.

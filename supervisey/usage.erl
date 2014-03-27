@@ -18,16 +18,18 @@ main(_) ->
     note("Mailbox contains:"),
     flush(),
 
-    % space(),
-    % note("Crashing dynamic child: ", server_sup:crash(Fst)),
+    space(),
+    note("Crashing dynamic child: ", server_sup:crash(Fst)),
 
-    % space(),
-    % note("Mailbox contains:"),
-    % flush(),
+    timer:sleep(500),
+    space(),
+    note("Mailbox contains:"),
+    flush(),
 
     space(),
     note("Crashing static child: ", supervisor:terminate_child(Sup, bob)),
 
+    timer:sleep(500),
     space(),
     note("Mailbox contains:"),
     flush(),
