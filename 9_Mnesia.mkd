@@ -1,0 +1,34 @@
+Mnesia
+======
+
+If no parameters, there will be {name, key, value}.
+Duplicates are not allowed. If the type is bag for
+duplicates. For deleting with duplicates, use
+`delete_object`.
+
+    mnesia:create_table(bar, [{type, bag}]).
+
+    spawn(fun() ->
+        mnesia:transaction(fun() ->
+            mnesia:lock({table, test}, write),
+            timer:sleep(10000)
+        end)
+    end).
+
+    mnesia:transaction(fun() ->
+        io:format("Transaction~n"),
+        mnesia:all_keys(test)
+    end).
+
+
+Create table
+------------
+
+    mnesia:create_table(foo, [...]).
+
+    % parameters
+    {disc_copies, [node1@host1, node2@host2]}
+    {ram_copies, [node1@host1, node2@host2]}
+    {disc_only_copies, [node1@host1, node2@host2]}
+
+    {access_mode, read_only}
