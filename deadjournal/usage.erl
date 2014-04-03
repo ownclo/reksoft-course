@@ -1,13 +1,20 @@
+%%! -pz mochiweb/ebin/
 -module(usage).
--export([main/1, main_web/1]).
+-export([main/1, main_noweb/1]).
 -mode(compile).
 
-main_web(_) ->
+main(_) ->
+    code:add_path("mochiweb/ebin"),
+
     note("Starting... ", deadweb:start()),
-    %% note("Stopping... ", deadweb:stop()),
+    note("Inserting post... ", deadjournal:new_post(cats, "I love cats")),
+
+    io:format("~n"),
+    io:get_chars("Press any key to stop... ", 1),
+    note("Stopping... ", deadweb:stop()),
     ok.
 
-main(_) ->
+main_noweb(_) ->
     note("Starting... ", deadjournal:start()),
 
     note("Inserting post... ", deadjournal:new_post(cats, "I love cats")),

@@ -30,6 +30,8 @@ start() ->
 stop() ->
     mnesia:stop().
 
+%% XXX: Will silently owerride old post in case
+%% of matching names.
 new_post(Name, Text) ->
     mnesia:transaction(fun() ->
         mnesia:write(#post{name = Name, text = Text})
