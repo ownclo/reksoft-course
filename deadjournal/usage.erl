@@ -1,6 +1,11 @@
 -module(usage).
--export([main/1]).
+-export([main/1, main_web/1]).
 -mode(compile).
+
+main_web(_) ->
+    note("Starting... ", deadweb:start()),
+    %% note("Stopping... ", deadweb:stop()),
+    ok.
 
 main(_) ->
     note("Starting... ", deadjournal:start()),

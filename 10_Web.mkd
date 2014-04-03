@@ -1,0 +1,78 @@
+Erlang on the Web
+=================
+
+HTTP-Client
+-----------
+
+    > httpc:request("google.com").
+    AWKWARD ERROR MESSAGE
+
+    > inets:start(httpc, [{profile, default}]).
+    {error, inets_not_started}
+    > inets:start()
+    > inets:start(httpc, ...)
+    already_started
+    > httpc:set_options(
+        [{proxy, {{"proxy.reksoft.ru", 3128}, []}}]).
+
+    > httpc:request(get, {"http://www.google.com", []}, [], [{sync, false}]).
+    {ok,#Ref<0.0.0.104>}
+    > flush().
+    KOKOKOKOKOKOKO
+
+
+HTTP-Servers
+------------
+
+* httpd (apache-like web server) std lib
+* mochiweb (lightweight web servers)
+* Yaws (web-framework)
+
+
+httpd
+-----
+
+    {ok, Server} = inets:start(httpd,
+        [{port, 8080}
+        ,{server_name, "my_server"}
+        ,{server_root, "."}
+        ,{document_root, "."}]).
+
+
+    inets:start().
+    inets:start(httpd,
+        [{port, 8080}
+        ,{server_name, "hello_world"}
+        ,{server_root, "."}
+        ,{document_root, "."}
+        ,{modules, [mod_esi]}
+        ,{erl_script_alias, {"/hello", [hello_world]}}
+        ]).
+
+
+mochiweb
+--------
+
+    c(form).
+    mochiweb_http:start(
+        [{loop, fun form:form/1}, {port:8080}]).
+
+
+    erl -pa mochiweb/ebin
+
+Task
+----
+
+Back to the blogosphere!
+
+    get_posts
+    get_post
+    new_post
+
+Web server (mochiweb would be great)
+
+    GET / -> get_posts
+    GET /NAME -> get_post(name)
+    POST / -> new_post
+
+    ... COMMENTS support if needed.

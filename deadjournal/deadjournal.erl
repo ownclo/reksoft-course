@@ -1,5 +1,6 @@
 -module(deadjournal).
 -export([start/0,
+         stop/0,
          new_post/2,
          get_posts/0,
          get_post/1,
@@ -26,6 +27,9 @@ start() ->
             {attributes, record_info(fields, post)}]),
     ok.
 
+stop() ->
+    mnesia:stop().
+
 new_post(Name, Text) ->
     mnesia:transaction(fun() ->
         mnesia:write(#post{name = Name, text = Text})
@@ -40,7 +44,11 @@ get_posts() ->
 get_post(Name) ->
     {atomic, Post} = mnesia:transaction(fun() ->
         read_post(Name) end),
-    Post#post.text.
+
+    case Post of
+        none -> none;
+        Post -> Post#post.text
+    end.
 
 new_comment(Name, Text) ->
     mnesia:transaction(fun() ->
