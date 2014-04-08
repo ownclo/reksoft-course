@@ -1,0 +1,254 @@
+High-Level Architecture
+=======================
+
+Application in Erlang has a particular meaning.
+
+Our Blog has two parts, DB and WebServer.
+
+    %%%%%% src/db.erl
+    -module(db).
+    -export([start/2, stop/1]).
+
+    start(normal, go) ->
+        io:format("db start~n"),
+        {ok, Pid} = db_server:start(),
+        {ok, Pid}.
+
+    % note that there is no db_server:stop().
+    stop([]) -> io:format("db stop~n").
+
+
+App files are read at runtime, unlike source files.
+
+    %%%%%% ebin/db.app
+    % {application, Name, PropList}
+    {application, db, [
+      {mod, {db, go}},  % {mod, {MainModName, InitArg}}
+      {modules, [db, db_server]},  % eliminates duplicates
+      {registered, [db_server]}, % programmer's will.
+      {applications, [mnesia]}
+    ]}.
+
+
+Application starts on SINGLE node. On app stop EVERY
+process in app gets killed. This is done with group
+leader. _Every_ has a group leader, another (generally)
+process. Group leader is intended for IO, but GL has
+a nice property: on death of GL every process that has
+this GL unconditionally dies.
+
+    %%%%%%% SHELL
+    $ ERL_LIBS=. erl
+    1> application:start(db).
+    db start
+    ok
+    2> application:stop(db).
+    db stop
+    ok
+    =INFO REPORT==== .........
+
+Group leader on another node
+----------------------------
+
+If we started the process on another node, it
+will do IO on the same node. Ow-ow.
+
+
+Project structure
+-----------------
+    $ find .
+    ./ebin/db.app
+    ./ebin/db.beam
+    ./ebin/db_server.beam
+
+    ./src/db.erl
+    ./src/db_server.erl
+
+    $ erlc -o ebin src/db.erl
+    $ erlc -o ebin src/db_server.erl
+
+
+Dependent applications
+----------------------
+
+    {application, blog, [
+      {mod, {blog, go}},
+      {modules, [blog, blog_server]},
+      {registered, [blog_server]},
+      {applications, [db]},  % XXX: Blog requires Db
+      {description, "Blog"},
+      {vsn, "0.1"},
+      {env, [{database, db_server}]}  % application:get_env(database) ...
+    ]}.
+
+
+    $ ERL_LIB=.. erl
+    1> application:start(blog).
+    {error, {not_started, db}}
+    2> application:start(db).
+    ok
+    3> application:start(blog).
+    ok
+    4> application:stop(db).  % ACHTUNG, Blog still works.
+    5> q().
+    blog stop
+    ok
+
+In-box applications
+-------------------
+
+mnesia. `application:start(mnesia)`.
+
+    halt(0).  % RETURN CODE.
+
+
+Dynamic start
+-------------
+
+    -module(test).
+    -expot([start/2]).
+    start(normal, go) ->
+        io:format("Test passed~n"),
+        {ok, spawn(fun() -> receive stop -> ok end end)}.
+
+    %%%% ERL
+    1> application:start(test_app).
+    {error, {"no such file or directory", "test_app.app}}
+    2> c(test).
+    {ok, test}
+    3> application:load({application, test_app, [{mod, {test, go}}]}).
+    ok
+    4> application:start(test_app).
+    Test passed
+    5> application:unload(test_app).
+    {error, {running, test_app}}
+    6> application:which_applications().
+    [{test_app, [], []},
+     {stdlib, "KOKOKO", "1.17.5"},
+     {kernel, "Description", "2.14.5"}]
+    7> application:stop(test_app).
+    8> application:unload(test_app).
+
+
+    $ cat db/include/start.hrl
+    -define(START, start).
+    $ cat db/src/db.erl
+    -include("include/start.hrl").
+    start(_StartType, go) -> db_server:?START().
+    $ cat ../blog/src/blog.erl
+    -include_lib("db/include/start.hrl"). % from ERL_LIBS
+    ... blog_server:?START().
+
+    $ erlc -o ebin src/blog.erl
+    cannot find ...
+    $ ERL_LIBS=.. erlc -o ebin src/blog.erl
+
+
+What to do next?
+----------------
+We have a lot of files, lot of apps, how to bring it
+back together?
+
+* Emakefile
+* Rebar. De-facto standart. Not shipped.
+* Systools.
+
+Emakefile
+---------
+
+    $ cat Emakefile
+    {"src/*", [{outdir, "ebin"}]}.
+
+    $ rm ebin/*.beam
+    $ erl -make
+    Recompile: src/blog_server
+    Recompile: src/blog
+
+    $ erl
+    1> make:all().
+    Recompile: src/blog_server
+    Recompile: src/blog
+    up_to_date
+
+
+Additional options to Emakefile
+    {i, "include"}  % -include("start.hrl") == -include("include/start.hrl")
+    {d, START, start} % == -define(START, start)
+
+
+Rebar
+-----
+
+    $ git clone git://github.com:basho/rebar.git
+    $ cd rebar
+    $ make
+    $ cd ..
+    $ mv rebar/rebar ...
+
+    $ cat src/blog.app.src
+    {application, blog, [{applications, [db]},
+      {mod, {blog, go}}, {registered, [blog_server]},
+      {vsn, "1"}, {env, [{database, db_server}]}]}.
+    $ rm -rf ebin
+    $ rebar compile
+    .......
+    $ cat ebin/blog.app
+    {application, ...
+      {modules, [...]}}
+    $ cat rebar.config
+    {erl_opts, [{i, "include"}, {d, START, start}]}.
+
+    $ cat ../rebar.config
+    {sub_dirs, ["db", "blog"]}.
+
+Systools
+--------
+
+Systools is not a build system.
+
+    $ cat src/blog.app.src
+    ...
+    {vsn, "1"}, {description, "Blog"}
+    $ cd ..
+    $ cat blog-0.1.rel
+    {release, {"blog_rel", "0.0.1"}, {erts, "5.8.5"}, [
+        {kernel, "2.14.5"},  % Must have :(
+        {stdlib, "1.17.5"},
+        {db, "1"},
+        {blog, "1"}
+    ]}.
+
+    $ ERL_LIBS=. erl
+    1> systools:make_script("blog-0.1", [local]).
+    ok
+    2> ls().
+    ... blog-0.1.script
+    ... blog-0.1.boot (compressed script)
+
+    3> systools:make_tar("blog-0.1").
+    $ tar tf blog-0.1.tar.gz
+    lib/kernel-2.14.5/ebin/kernel.app
+    ...
+    lib/blog-1/ebin/blog.{app, beam}
+    ...
+    $ mkdir test; cd test
+    $ tar xf ../blog-0.1.tar.gz
+    $ erl -boot releases/0.0.1/start
+    RELEASES ARE BOOTSTRAPPED.
+
+
+How to pack entire erlang?
+--------------------------
+    > code:root_dir().
+    "/usr/local/lib/erlang"
+    > systools:make_tar("blog-0.1",
+        [{erts, "/usr/local/lib/erlang"}]).
+
+    $ tar xf ../blog-0.1.tar.gz
+    $ erts-5.8.5/bin/erl -boot releases/0.0.1/start
+    ...
+    db start
+    blog start
+    Eshell V5.8.5
+
+If want it to be standalone, use `erl -noshell`.
