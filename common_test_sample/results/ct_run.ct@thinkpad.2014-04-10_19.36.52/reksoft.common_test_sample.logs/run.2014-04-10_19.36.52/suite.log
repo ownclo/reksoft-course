@@ -1,0 +1,55 @@
+=== Suite started at 2014-04-10 19:36:52
+=== Starting test, 1 test cases
+=cases         1
+=user          ownclo
+=host          thinkpad
+=hosts         thinkpad 
+=emulator_vsn  5.10.2
+=emulator      beam
+=otp_release   R16B01
+=started       2014-04-10 19:36:52
+=case          my_SUITE:init_per_suite
+=logfile       my_suite.init_per_suite.html
+=started       2014-04-10 19:36:52
+=ended         2014-04-10 19:36:52
+=result        ok
+=elapsed       9.22e-4
+=case          my_SUITE:first_test
+=logfile       my_suite.first_test.html
+=started       2014-04-10 19:36:52
+=ended         2014-04-10 19:36:52
+=result        failed: {{badmatch,false},
+                        [{my_SUITE,first_test,1,
+                                   [{file,"my_SUITE.erl"},{line,16}]},
+                         {test_server,ts_tc,3,
+                                      [{file,"test_server.erl"},{line,1359}]},
+                         {test_server,run_test_case_eval1,6,
+                                      [{file,"test_server.erl"},{line,976}]},
+                         {test_server,run_test_case_eval,9,
+                                      [{file,"test_server.erl"},{line,925}]}]}, [{my_SUITE,
+                                                                                  first_test,
+                                                                                  16},
+                                                                                 {test_server,
+                                                                                  ts_tc,
+                                                                                  1359},
+                                                                                 {test_server,
+                                                                                  run_test_case_eval1,
+                                                                                  976},
+                                                                                 {test_server,
+                                                                                  run_test_case_eval,
+                                                                                  925}]
+=== *** FAILED *** test case 1 of 1
+=case          my_SUITE:end_per_suite
+=logfile       my_suite.end_per_suite.html
+=started       2014-04-10 19:36:53
+=ended         2014-04-10 19:36:53
+=result        ok
+=elapsed       2.0e-6
+=group_time    0.094s
+=== TEST COMPLETE, 0 ok, 1 failed of 1 test cases
+
+=finished      2014-04-10 19:36:53
+=failed        1
+=successful    0
+=user_skipped  0
+=auto_skipped  0

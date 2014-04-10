@@ -1,0 +1,51 @@
+=== Suite started at 2014-04-10 19:13:38
+=== Starting test, 1 test cases
+=cases         1
+=user          ownclo
+=host          thinkpad
+=hosts         thinkpad 
+=emulator_vsn  5.10.2
+=emulator      beam
+=otp_release   R16B01
+=started       2014-04-10 19:13:38
+=case          ct_framework:init_per_suite
+=logfile       ct_framework.init_per_suite.html
+=group_props   [{suite,my_SUITE}]
+=started       2014-04-10 19:13:38
+=ended         2014-04-10 19:13:38
+=result        ok
+=elapsed       1.0e-6
+=case          my_SUITE:first_test
+=logfile       my_suite.first_test.html
+=started       2014-04-10 19:13:38
+=ended         2014-04-10 19:13:38
+=result        failed: {noproc,{gen_server,call,[undefined,val]}}, [{gen_server,
+                                                                     call,180},
+                                                                    {my_SUITE,
+                                                                     first_test,
+                                                                     8},
+                                                                    {test_server,
+                                                                     ts_tc,
+                                                                     1359},
+                                                                    {test_server,
+                                                                     run_test_case_eval1,
+                                                                     976},
+                                                                    {test_server,
+                                                                     run_test_case_eval,
+                                                                     925}]
+=== *** FAILED *** test case 1 of 1
+=case          ct_framework:end_per_suite
+=logfile       ct_framework.end_per_suite.html
+=group_props   [{suite,my_SUITE}]
+=started       2014-04-10 19:13:38
+=ended         2014-04-10 19:13:38
+=result        ok
+=elapsed       1.0e-6
+=group_time    0.072s
+=== TEST COMPLETE, 0 ok, 1 failed of 1 test cases
+
+=finished      2014-04-10 19:13:38
+=failed        1
+=successful    0
+=user_skipped  0
+=auto_skipped  0

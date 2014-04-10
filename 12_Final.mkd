@@ -1,0 +1,125 @@
+Final notes
+===========
+
+New code load
+-------------
+
+System messages
+
+    -export([test/0, system_continue/3]).
+
+    test() ->
+      receive
+        {ask, Msg} ->
+          io:format("Got ~p~n", [Msg]),
+          test();
+        {system, From, Msg} = Message ->
+          io:format("System message: ~p~n", [Message]),
+          sys:handle_system_msg(
+            Msg, From, self(), ?MODULE, [], go)
+      end.
+
+      system_continue(_Parent, _Debug, go) ->
+        io:format("Resumed~n"),
+        test().
+
+
+    $ erl
+    > c(test).
+    > P = spawn(fun test:test/0).
+    > P ! {ask, foo}
+    ... Change something ...
+    > sys:suspend(P).
+    > sys:resume(P).
+    .... NEW CODE ! .....
+
+
+
+    %% WORKING WITH GEN_SERVER
+    -module(test_server).
+    -export([init/1, handle_cast/2]).
+
+    init(_) -> {ok, []}.
+    handle_cast(ping, State) ->
+      io:format("pong~n"),
+      {noreply, State}.
+
+    $ erl
+    > c(test_server).
+    > {ok, P} = gen_server:start_link(test_server, [], []).
+    > gen_server:cast(P, ping).
+    pong
+    > sys:suspend(P).
+
+    %% CHANGING GEN_SERVER
+    handle_cast(ping, Counter) ->
+      io:format("counter: ~p~n", [Counter]),
+      {noreply, Counter+1}.
+
+    code_change(old, [], _Extra) ->
+      io:format("code change~n"),
+      {ok, 0}.
+
+    %% Back in erl
+    > c(test_server).
+    > sys:change_code(P, test_server, old, []).
+    code change
+    ok
+    > sys:resume(P).
+    > gen_server:cast(P, ping).
+    counter:0
+    ok
+    > gen_server:cast(P, ping).
+    counter:1
+    ok
+    >
+
+
+Testing
+-------
+* EUnit
+* Common Test
+* Meck
+
+EUnit
+-----
+
+    > simple_eunit:test().
+      There were no tests to run
+    ok
+
+EUnit traps IO. No `io:format("Test 1~n")` in tests.
+If output is desired, format to user:
+`io:format(user, "Test 2~n", [])`.
+
+Common Test
+-----------
+
+    $ find .
+    .
+    ./test
+    ./test/my_SUITE.erl
+    ./results
+    ./ebin
+
+    $ erlc -o ebin src/*.erl
+    $ ERL_LIBS=$(pwd) ct_run -dir test -logdir results
+
+Meck
+----
+
+    $ git clone https://github.com/eproxus/meck.git
+    $ cd meck
+    $ rebar compile
+
+For Meck to work, one need to include debug info:
+
+    $ erlc -o ebin +debug_info src/simple.erl
+
+    > meck:new(simple, [passthrough]).
+    > meck:expect(simple, handle_call,
+        fun(Msg, From, State) ->
+          io:format("~p~n", [{Msg, From, State}]),
+          meck:passthrough([Msg, From, State]) % call non-mocked fn
+        end).
+    > gen_server:call(P, val).

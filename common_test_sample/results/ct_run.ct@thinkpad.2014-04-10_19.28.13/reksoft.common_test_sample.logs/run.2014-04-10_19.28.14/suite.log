@@ -1,0 +1,59 @@
+=== Suite started at 2014-04-10 19:28:14
+=== Starting test, 1 test cases
+=cases         1
+=user          ownclo
+=host          thinkpad
+=hosts         thinkpad 
+=emulator_vsn  5.10.2
+=emulator      beam
+=otp_release   R16B01
+=started       2014-04-10 19:28:14
+=case          my_SUITE:init_per_suite
+=logfile       my_suite.init_per_suite.html
+=started       2014-04-10 19:28:14
+=ended         2014-04-10 19:28:14
+=result        failed: {{badmatch,
+                         {error,
+                          {undef,
+                           [{simple,init,[go],[]},
+                            {gen_server,init_it,6,
+                             [{file,"gen_server.erl"},{line,304}]},
+                            {proc_lib,init_p_do_apply,3,
+                             [{file,"proc_lib.erl"},{line,239}]}]}}},
+                        [{my_SUITE,init_per_suite,1,
+                          [{file,"my_SUITE.erl"},{line,7}]},
+                         {test_server,ts_tc,3,
+                          [{file,"test_server.erl"},{line,1359}]},
+                         {test_server,run_test_case_eval1,6,
+                          [{file,"test_server.erl"},{line,1040}]},
+                         {test_server,run_test_case_eval,9,
+                          [{file,"test_server.erl"},{line,925}]}]}, [{my_SUITE,
+                                                                      init_per_suite,
+                                                                      7},
+                                                                     {test_server,
+                                                                      ts_tc,
+                                                                      1359},
+                                                                     {test_server,
+                                                                      run_test_case_eval1,
+                                                                      1040},
+                                                                     {test_server,
+                                                                      run_test_case_eval,
+                                                                      925}]
+=== *** FAILED *** init_per_suite
+=== 
+=case          my_SUITE:first_test
+=started         2014-04-10 19:28:14
+=result          skipped: init_per_suite failed
+=== *** Skipping test case #1 {my_SUITE,first_test} ***
+=== 
+=case          my_SUITE:end_per_suite
+=started         2014-04-10 19:28:14
+=result          skipped: init_per_suite failed
+=== *** Skipping test case #0 {my_SUITE,end_per_suite} ***
+=== TEST COMPLETE, 0 ok, 0 failed, 1 skipped of 1 test cases
+
+=finished      2014-04-10 19:28:14
+=failed        0
+=successful    0
+=user_skipped  0
+=auto_skipped  1
