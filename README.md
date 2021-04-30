@@ -1,2 +1,4 @@
-# reksoft-course
-notes and homework tasks for Reksoft Erlang course
+# Курс Erlan от компании Reksoft
+
+
+[Введение в Erlang](1_intro.md)
